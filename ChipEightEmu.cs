@@ -12,6 +12,8 @@ namespace chip8_emu
 		private SpriteBatch _spriteBatch;
 		private CPU _gameCPU;
 
+		private Texture2D currentDisplay;
+
 		public ChipEightEmu()
 		{
 			_graphics = new GraphicsDeviceManager(this);
@@ -43,8 +45,11 @@ namespace chip8_emu
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 				Exit();
 
+			// this defaults to 60fps though we should probably find a way to force this
 			_gameCPU.AdvanceOneCycle();
 
+			// get and update input
+			
 			base.Update(gameTime);
 		}
 
@@ -53,12 +58,15 @@ namespace chip8_emu
 			GraphicsDevice.Clear(Color.CornflowerBlue);
 
 			bool[,] screen = _gameCPU.GetDisplay();
-
-			Texture2D image = CreateTexture(_graphics.GraphicsDevice, screen);
+			
+			if (_gameCPU.shouldUpdateGraphics)
+			{
+				currentDisplay = CreateTexture(_graphics.GraphicsDevice, screen);
+			}
 
 			float minScale = Math.Min((float)_graphics.PreferredBackBufferWidth / screen.GetLength(0), (float)_graphics.PreferredBackBufferHeight / screen.GetLength(1));
 			_spriteBatch.Begin(SpriteSortMode.Deferred, null, SamplerState.PointClamp);
-			_spriteBatch.Draw(image, Vector2.Zero, new Rectangle(0, 0, screen.GetLength(0), screen.GetLength(1)), Color.White, 0f, Vector2.Zero, minScale, SpriteEffects.None, 0f);
+			_spriteBatch.Draw(currentDisplay, Vector2.Zero, new Rectangle(0, 0, screen.GetLength(0), screen.GetLength(1)), Color.White, 0f, Vector2.Zero, minScale, SpriteEffects.None, 0f);
 			_spriteBatch.End();
 
 			base.Draw(gameTime);
