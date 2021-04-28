@@ -25,6 +25,7 @@ namespace chip8_emu
 		{
 			// TODO: Add your initialization logic here
 			_gameCPU = new CPU();
+			_gameCPU.LoadGame("tetris.c8");
 			
 			_graphics.PreferredBackBufferWidth = 1280;
 			_graphics.PreferredBackBufferHeight = 640;
@@ -49,7 +50,8 @@ namespace chip8_emu
 			_gameCPU.AdvanceOneCycle();
 
 			// get and update input
-			
+			_gameCPU.UpdateInput(GetKeyboardState());
+
 			base.Update(gameTime);
 		}
 
@@ -59,7 +61,7 @@ namespace chip8_emu
 
 			bool[,] screen = _gameCPU.GetDisplay();
 			
-			if (_gameCPU.shouldUpdateGraphics)
+			if (_gameCPU.shouldUpdateGraphics || currentDisplay == null)
 			{
 				currentDisplay = CreateTexture(_graphics.GraphicsDevice, screen);
 			}
@@ -94,6 +96,95 @@ namespace chip8_emu
 			texture.SetData(data);
 
 			return texture;
+		}
+
+		private bool[] GetKeyboardState()
+		{
+			KeyboardState state = Keyboard.GetState();
+
+			bool[] returnValue = new bool[16];
+
+			if (state.IsKeyDown(Keys.D1))
+			{
+				returnValue[0] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.D2))
+			{
+				returnValue[1] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.D3))
+			{
+				returnValue[2] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.D4))
+			{
+				returnValue[3] = true;
+			}
+
+			if (state.IsKeyDown(Keys.Q))
+			{
+				returnValue[4] = true;
+			}
+
+			if (state.IsKeyDown(Keys.W))
+			{
+				returnValue[5] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.E))
+			{
+				returnValue[6] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.R))
+			{
+				returnValue[7] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.A))
+			{
+				returnValue[8] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.S))
+			{
+				returnValue[9] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.D))
+			{
+				returnValue[10] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.F))
+			{
+				returnValue[11] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.Z))
+			{
+				returnValue[12] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.X))
+			{
+				returnValue[13] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.C))
+			{
+				returnValue[14] = true;
+			}
+			
+			if (state.IsKeyDown(Keys.V))
+			{
+				returnValue[15] = true;
+			}
+			
+			return returnValue;
 		}
 	}
 }

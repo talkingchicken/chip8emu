@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace chip8_emu
 {
 	public class CPU
 	{
+		
+		const int START_OF_FONT_SET = 0x0050;
+		const int START_OF_PROGRAM_MEMORY = 0x0200;
 		// 16 one byte data registers
 		// first 15 are data, 16th is "carry flag"
 		private byte[] registers;
@@ -42,31 +46,69 @@ namespace chip8_emu
 
 		public void Reset()
 		{
+			byte[] chip8Fontset = new byte[]{ 
+				0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+				0x20, 0x60, 0x20, 0x20, 0x70, // 1
+				0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+				0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+				0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+				0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+				0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+				0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+				0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+				0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+				0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+				0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+				0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+				0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+				0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+				0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+			};
+
 			memory = new byte[0x1000];
+
+			for (int i = 0; i < chip8Fontset.Length; i++)
+			{
+				memory[START_OF_FONT_SET + i] = chip8Fontset[i];
+			}
+
 			registers = new byte[16];
 			stack = new Stack<ushort>();
 			indexRegister = 0;
-			programCounter = 0x200;
+			programCounter = START_OF_PROGRAM_MEMORY;
 			delayTimer = 0;
 			soundTimer = 0;
 			graphicsDisplay = new bool[64, 32];
 			keys = new bool[16];
-			shouldUpdateGraphics = false;
+			shouldUpdateGraphics = true;
 		}
 
 		public void LoadGame(string name)
 		{
+			Reset();
 
+			var reader = File.OpenRead(name);
+
+			int currentIndex = START_OF_PROGRAM_MEMORY;
+
+			int currentByte;
+			while((currentByte = reader.ReadByte()) != -1)
+			{
+				if (currentIndex >= 0x1000)
+				{
+					throw new Exception("file too big");
+				}
+
+				memory[currentIndex++] = (byte)currentByte;
+			}
 		}
 
 		public void AdvanceOneCycle()
 		{
 			// fetch opcode
 			var opcode = (ushort)ReadOpCode();
-			
-			// decode opcode
-			// execute opcode
 
+			RunOpcode(opcode);
 			// update timers
 			if (delayTimer > 0)
 				delayTimer--;
@@ -87,10 +129,12 @@ namespace chip8_emu
 			for (int i = 0; i < 8; i++)
 			{
 				bool currentPixel = (value & 0x01) != 0;
-				if (currentPixel != graphicsDisplay[x, y + 7 - i])
+				if (currentPixel != graphicsDisplay[x + 7 - i, y])
 				{
-					changed = true;
-					graphicsDisplay[x, y + 7 - i] = currentPixel;
+					if (currentPixel == false)
+						changed = true;
+
+					graphicsDisplay[x + 7 - i, y] = currentPixel;
 				}
 
 				value = (byte)(value >> 1);
@@ -115,7 +159,7 @@ namespace chip8_emu
 			{
 				//1  2 3 4
 				//12 8 4 0
-				return (input >> (4 - input)) & 0x000F;
+				return (input >> ((4 - digit) * 4)) & 0x000F;
 			}
 			else
 			{
@@ -378,16 +422,22 @@ namespace chip8_emu
 
 					for (int i = 0; i < height; i++)
 					{
-						changed = changed || DrawLineOnDisplay(startX, startY, memory[indexRegister + height]);
+						bool hasChanged = DrawLineOnDisplay(startX, startY + i, memory[indexRegister + i]);
+						changed = changed || hasChanged;
 					}
 
 					if (changed)
 					{
 						registers[0xF] = 1;
 					}
+					else
+					{
+						registers[0xF] = 0;
+					}
 
+					shouldUpdateGraphics = true;
 					programCounter += 2;
-					break;
+					return;
 				}
 
 				case 0xE000:
@@ -445,8 +495,22 @@ namespace chip8_emu
 
 						case 0x000A:
 						{
-							// FX0A: block input until a key is pressed, then store the key in Vx
+							// FX0A: block execution until a key is pressed, then store the key in Vx
+							bool found = false;
+							for (byte i = 0; i < keys.Length; i++)
+							{
+								if (keys[i])
+								{
+									registers[registerX] = i;
+									found = true;
+								}
+							}
 
+							if (!found)
+							{
+								shouldUpdateGraphics = false;
+								return;
+							}
 							break;
 						}
 
@@ -473,7 +537,8 @@ namespace chip8_emu
 
 						case 0x0029:
 						{
-							// FX29: set set I to the location of the sprite for the character in VX
+							// FX29: set I to the location of the sprite for the character in VX
+							indexRegister = (ushort)(START_OF_FONT_SET + registers[registerX]);
 							break;
 						}
 
@@ -496,8 +561,8 @@ namespace chip8_emu
 
 						case 0x0055:
 						{
-							// FX55: store the 16 registers in memory starting at I (don't change I)
-							for (int i = 0; i < registers.Length; i++)
+							// FX55: store the registers up to and including Vx in memory starting at I (don't change I)
+							for (int i = 0; i <= registerX; i++)
 							{
 								memory[indexRegister + i] = registers[i];
 							}
@@ -506,10 +571,10 @@ namespace chip8_emu
 
 						case 0x0065:
 						{
-							// FX65: recall the 16 values starting at I into the registers (don't change I)
-							for (int i = 0; i < registers.Length; i++)
+							// FX65: recall memory starting at I into the registers up to and including Vx (don't change I)
+							for (int i = 0; i <= registerX; i++)
 							{
-								registers[i] = [indexRegister + i];
+								registers[i] = memory[indexRegister + i];
 							}
 							break;
 						}
@@ -519,6 +584,8 @@ namespace chip8_emu
 					break;
 				}
 			}
+
+			shouldUpdateGraphics = false;
 		}
 	}
 }
