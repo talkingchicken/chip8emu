@@ -1,0 +1,23 @@
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\chip8 emu.exe
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\chip8 emu.deps.json
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\chip8 emu.runtimeconfig.json
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\chip8 emu.runtimeconfig.dev.json
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\chip8 emu.dll
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\chip8 emu.pdb
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\MonoGame.Framework.dll
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\runtimes\linux-x64\native\libSDL2-2.0.so.0
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\runtimes\linux-x64\native\libopenal.so.1
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\runtimes\osx\native\libSDL2-2.0.0.dylib
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\runtimes\osx\native\libopenal.1.dylib
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\runtimes\win-x64\native\SDL2.dll
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\runtimes\win-x64\native\soft_oal.dll
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\runtimes\win-x86\native\SDL2.dll
+D:\code\chip8 emu\bin\Debug\netcoreapp3.1\runtimes\win-x86\native\soft_oal.dll
+D:\code\chip8 emu\obj\Debug\netcoreapp3.1\chip8 emu.csprojAssemblyReference.cache
+D:\code\chip8 emu\obj\Debug\netcoreapp3.1\chip8 emu.AssemblyInfoInputs.cache
+D:\code\chip8 emu\obj\Debug\netcoreapp3.1\chip8 emu.AssemblyInfo.cs
+D:\code\chip8 emu\obj\Debug\netcoreapp3.1\chip8 emu.csproj.CoreCompileInputs.cache
+D:\code\chip8 emu\obj\Debug\netcoreapp3.1\chip8 emu.csproj.CopyComplete
+D:\code\chip8 emu\obj\Debug\netcoreapp3.1\chip8 emu.dll
+D:\code\chip8 emu\obj\Debug\netcoreapp3.1\chip8 emu.pdb
+D:\code\chip8 emu\obj\Debug\netcoreapp3.1\chip8 emu.genruntimeconfig.cache
