@@ -25,11 +25,12 @@ namespace chip8_emu
 		{
 			// TODO: Add your initialization logic here
 			_gameCPU = new CPU();
-			_gameCPU.LoadGame("tetris.c8");
+			_gameCPU.LoadGame("testroms/test_opcode.ch8");
 			
 			_graphics.PreferredBackBufferWidth = 1280;
 			_graphics.PreferredBackBufferHeight = 640;
 			_graphics.ApplyChanges();
+
 
 			base.Initialize();
 		}
@@ -46,24 +47,24 @@ namespace chip8_emu
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 				Exit();
 
-			// this defaults to 60fps though we should probably find a way to force this
-			_gameCPU.AdvanceOneCycle();
-
 			// get and update input
-			_gameCPU.UpdateInput(GetKeyboardState());
+			UpdateKeyboardState(_gameCPU.keys);
+
+			int instructionsPerTick = 9;
+			// this defaults to 60fps though we should probably find a way to force this
+			_gameCPU.AdvanceOneCycle(instructionsPerTick);
+
 
 			base.Update(gameTime);
 		}
 
 		protected override void Draw(GameTime gameTime)
 		{
-			GraphicsDevice.Clear(Color.CornflowerBlue);
-
 			bool[,] screen = _gameCPU.GetDisplay();
-			
-			if (_gameCPU.shouldUpdateGraphics || currentDisplay == null)
+
+			//if (_gameCPU.shouldUpdateGraphics || currentDisplay == null)
 			{
-				currentDisplay = CreateTexture(_graphics.GraphicsDevice, screen);
+				currentDisplay = CreateTexture(_graphics.GraphicsDevice, screen, gameTime.IsRunningSlowly);
 			}
 
 			float minScale = Math.Min((float)_graphics.PreferredBackBufferWidth / screen.GetLength(0), (float)_graphics.PreferredBackBufferHeight / screen.GetLength(1));
@@ -74,7 +75,7 @@ namespace chip8_emu
 			base.Draw(gameTime);
 		}
 
-		private static Texture2D CreateTexture(GraphicsDevice device, bool[,] pixelData)
+		private static Texture2D CreateTexture(GraphicsDevice device, bool[,] pixelData, bool isSlow)
 		{
 			int width = pixelData.GetLength(0);
 			int height = pixelData.GetLength(1);
@@ -89,7 +90,8 @@ namespace chip8_emu
 				for (int x = 0; x < width; x++)
 				{
 					bool isPixelOn = pixelData[x,y];
-					data[counter++] = isPixelOn ? new Color(255, 255, 255) : new Color(0, 0, 0);
+					Color onColor = isSlow ? new Color(255, 0, 0) : new Color(255,255,255);
+					data[counter++] = isPixelOn ? onColor : new Color(0, 0, 0);
 				}
 			}
 			
@@ -98,93 +100,26 @@ namespace chip8_emu
 			return texture;
 		}
 
-		private bool[] GetKeyboardState()
+		private void UpdateKeyboardState(bool[] keys)
 		{
 			KeyboardState state = Keyboard.GetState();
 
-			bool[] returnValue = new bool[16];
-
-			if (state.IsKeyDown(Keys.D1))
-			{
-				returnValue[0] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.D2))
-			{
-				returnValue[1] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.D3))
-			{
-				returnValue[2] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.D4))
-			{
-				returnValue[3] = true;
-			}
-
-			if (state.IsKeyDown(Keys.Q))
-			{
-				returnValue[4] = true;
-			}
-
-			if (state.IsKeyDown(Keys.W))
-			{
-				returnValue[5] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.E))
-			{
-				returnValue[6] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.R))
-			{
-				returnValue[7] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.A))
-			{
-				returnValue[8] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.S))
-			{
-				returnValue[9] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.D))
-			{
-				returnValue[10] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.F))
-			{
-				returnValue[11] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.Z))
-			{
-				returnValue[12] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.X))
-			{
-				returnValue[13] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.C))
-			{
-				returnValue[14] = true;
-			}
-			
-			if (state.IsKeyDown(Keys.V))
-			{
-				returnValue[15] = true;
-			}
-			
-			return returnValue;
+			keys[0x1] = state.IsKeyDown(Keys.D1);
+			keys[0x2] = state.IsKeyDown(Keys.D2);
+			keys[0x3] = state.IsKeyDown(Keys.D3);
+			keys[0xC] = state.IsKeyDown(Keys.D4);
+			keys[0x4] = state.IsKeyDown(Keys.Q);
+			keys[0x5] = state.IsKeyDown(Keys.W);
+			keys[0x6] = state.IsKeyDown(Keys.E);
+			keys[0xD] = state.IsKeyDown(Keys.R);
+			keys[0x7] = state.IsKeyDown(Keys.A);
+			keys[0x8] = state.IsKeyDown(Keys.S);
+			keys[0x9] = state.IsKeyDown(Keys.D);
+			keys[0xE] = state.IsKeyDown(Keys.F);
+			keys[0xA] = state.IsKeyDown(Keys.Z);
+			keys[0x0] = state.IsKeyDown(Keys.X);
+			keys[0xB] = state.IsKeyDown(Keys.C);
+			keys[0xF] = state.IsKeyDown(Keys.V);
 		}
 	}
 }

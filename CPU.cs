@@ -16,7 +16,8 @@ namespace chip8_emu
 		private ushort indexRegister;
 		private ushort programCounter;
 
-		private Stack<ushort> stack;
+		private ushort[] stack;
+		private int stackPointer;
 
 		private readonly Random _random = new Random();
 		/*
@@ -32,7 +33,7 @@ namespace chip8_emu
 		private byte soundTimer;
 
 		// 16 keys, array tells you if it's on or not
-		private bool[] keys;
+		public bool[] keys;
 
 		// one bit pixels. access [x,y]
 		private bool[,] graphicsDisplay;
@@ -73,7 +74,8 @@ namespace chip8_emu
 			}
 
 			registers = new byte[16];
-			stack = new Stack<ushort>();
+			stack = new ushort[16];
+			stackPointer = 0;
 			indexRegister = 0;
 			programCounter = START_OF_PROGRAM_MEMORY;
 			delayTimer = 0;
@@ -103,12 +105,15 @@ namespace chip8_emu
 			}
 		}
 
-		public void AdvanceOneCycle()
+		public void AdvanceOneCycle(int instructionsPerTick)
 		{
-			// fetch opcode
-			var opcode = (ushort)ReadOpCode();
+			for (int i = 0; i < instructionsPerTick; i++)
+			{
+				// fetch opcode
+				var opcode = (ushort)ReadOpCode();
 
-			RunOpcode(opcode);
+				RunOpcode(opcode);
+			}
 			// update timers
 			if (delayTimer > 0)
 				delayTimer--;
@@ -122,19 +127,24 @@ namespace chip8_emu
 			return graphicsDisplay;
 		}
 
-		// return true if a pixel changed.
+		// return true if a pixel was turned off.
 		public bool DrawLineOnDisplay(int x, int y, byte value)
 		{
 			bool changed = false;
 			for (int i = 0; i < 8; i++)
 			{
 				bool currentPixel = (value & 0x01) != 0;
-				if (currentPixel != graphicsDisplay[x + 7 - i, y])
+
+				if (currentPixel)
 				{
-					if (currentPixel == false)
+					bool storedPixel = graphicsDisplay[x + 7 - i, y];
+
+					bool resultPixel = storedPixel != currentPixel;
+
+					if (storedPixel == true && resultPixel == false)
 						changed = true;
 
-					graphicsDisplay[x + 7 - i, y] = currentPixel;
+					graphicsDisplay[x + 7 - i, y] = resultPixel;
 				}
 
 				value = (byte)(value >> 1);
@@ -177,20 +187,17 @@ namespace chip8_emu
 						if (opcode == 0x00E0)
 						{
 							// 00E0: clear the screen
-							for (int y = 0; y < graphicsDisplay.GetLength(0); y++)
-							{
-								for (int x = 0; x < graphicsDisplay.GetLength(1); x++)
-								{
-									graphicsDisplay[x,y] = false;
-								}
-							}
+							graphicsDisplay = new bool[64,32];
 
 							programCounter += 2;
+
+							shouldUpdateGraphics = true;
+							return;
 						}
 						else if (opcode == 0x00EE)
 						{
 							// 00EE: return from a subroutine
-							programCounter = stack.Pop();
+							programCounter = stack[--stackPointer];
 							programCounter += 2;
 						}
 
@@ -213,7 +220,7 @@ namespace chip8_emu
 				case 0x2000:
 				{
 					// 2NNN: call subroutine at NNN (puts it on the stack)
-					stack.Push(programCounter);
+					stack[stackPointer++] = programCounter;
 					programCounter = (ushort)(opcode & 0x0FFF);
 					break;
 				}
@@ -323,8 +330,8 @@ namespace chip8_emu
 						{
 							// VX - VY. if borrow, set VF to 0.
 							byte prevValue = registers[registerX];
+							registers[0xF] = (registers[registerY] > registers[registerX]) ? (byte)0 : (byte)1;
 							registers[registerX] -= registers[registerY];
-							registers[0xF] = (prevValue < registers[registerX]) ? (byte)0 : (byte)1;
 							break;
 						}
 
@@ -332,7 +339,7 @@ namespace chip8_emu
 						{
 							// VX >> 1. Store shifted bit in VF.
 
-							registers[0xF] = (byte)(opcode & (ushort)1);
+							registers[0xF] = (byte)(registers[registerX] & (ushort)1);
 							registers[registerX] = (byte)(registers[registerX] >> 1);
 							break;
 						}
@@ -341,13 +348,13 @@ namespace chip8_emu
 						{
 							// VX = VY - VX
 							byte prevValue = registers[registerY];
+							registers[0xF] = (registers[registerX] > registers[registerY]) ? (byte)0 : (byte)1;
 							registers[registerX] = (byte)(registers[registerY] - registers[registerX]);
-							registers[0xF] = (prevValue < registers[registerY]) ? (byte)0 : (byte)1;
 							break;
 						}
 						case 0xE:
 						{
-							registers[0xF] = (byte)((opcode & 0x8000) >> 15);
+							registers[0xF] = (byte)(registers[registerX] >> 15);
 							registers[registerX] = (byte)(registers[registerX] << 1);
 							break;
 						}
@@ -382,7 +389,7 @@ namespace chip8_emu
 				case 0xA000:
 				{
 					//ANNN: Sets index to address NNN
-					indexRegister = (ushort)(opcode & 0xFFF);
+					indexRegister = (ushort)(opcode & 0x0FFF);
 					programCounter += 2;
 					break;
 				}
@@ -390,7 +397,7 @@ namespace chip8_emu
 				case 0xB000:
 				{
 					//BNNN: jump to address NNN + V0
-					programCounter = (ushort)(opcode & 0xFFF + registers[0]);
+					programCounter = (ushort)((opcode & 0x0FFF) + registers[0]);
 					break;
 				}
 
@@ -538,7 +545,7 @@ namespace chip8_emu
 						case 0x0029:
 						{
 							// FX29: set I to the location of the sprite for the character in VX
-							indexRegister = (ushort)(START_OF_FONT_SET + registers[registerX]);
+							indexRegister = (ushort)(START_OF_FONT_SET + (registers[registerX] * 5));
 							break;
 						}
 
@@ -566,6 +573,8 @@ namespace chip8_emu
 							{
 								memory[indexRegister + i] = registers[i];
 							}
+
+							//indexRegister += (ushort)(registerX + 1);
 							break;
 						}
 
@@ -576,6 +585,7 @@ namespace chip8_emu
 							{
 								registers[i] = memory[indexRegister + i];
 							}
+							//indexRegister += (ushort)(registerX + 1);
 							break;
 						}
 					}
@@ -583,6 +593,9 @@ namespace chip8_emu
 					programCounter += 2;
 					break;
 				}
+
+				default:
+					throw new Exception("unknown opcode");
 			}
 
 			shouldUpdateGraphics = false;
